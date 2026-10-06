@@ -4,7 +4,7 @@
 und an das richtige Team routen, formale Mängel automatisch korrigieren, jede Entscheidung revisionssicher
 protokollieren und dem Einreicher einen standardkonformen pain.002-Statusreport zurückgeben.**
 
-[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+[![CI](https://github.com/jonathankuhn11-spec/zv-klaerfall-camunda/actions/workflows/ci.yml/badge.svg)](https://github.com/jonathankuhn11-spec/zv-klaerfall-camunda/actions/workflows/ci.yml)
 ![Camunda 8.9](https://img.shields.io/badge/Camunda-8.9-FC5D0D?logo=camunda&logoColor=white)
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-3776AB?logo=python&logoColor=white)
 ![Tests](https://img.shields.io/badge/Tests-77%20passed-brightgreen)
