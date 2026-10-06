@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Laufzeitdaten (Audit-Trail, Buchungsjournal, Statusreports, Dubletten-DB)
+.data/
+
+# Node (Lint-/Render-Tooling)
+node_modules/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

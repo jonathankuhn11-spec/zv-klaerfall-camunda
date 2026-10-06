@@ -1,0 +1,9 @@
+[
+  { "name": "Nordfall Trading Ltd", "liste": "DEMO-EU-CFSL" },
+  { "name": "Vostok Metallurgie GmbH", "liste": "DEMO-EU-CFSL" },
+  { "name": "Kaspian Shipping Company", "liste": "DEMO-EU-CFSL" },
+  { "name": "Aurum Dust Minerals", "liste": "DEMO-UN" },
+  { "name": "Greywater Logistics Corp", "liste": "DEMO-OFAC" },
+  { "name": "Ivo Tarkovsky", "liste": "DEMO-EU-CFSL" },
+  { "name": "Helion Petrochem SA", "liste": "DEMO-EU-CFSL" }
+]

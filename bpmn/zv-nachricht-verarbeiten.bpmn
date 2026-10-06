@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_zv-nachricht-verarbeiten" targetNamespace="http://bpmn.io/schema/bpmn" exporter="zv-klaerfall/tools/generate_models.py" exporterVersion="0.1.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.9.0">
+  <bpmn:process id="zv-nachricht-verarbeiten" name="Zahlungsauftragsdatei (pain.001) verarbeiten" isExecutable="true">
+    <bpmn:extensionElements>
+      <zeebe:versionTag value="1.0" />
+    </bpmn:extensionElements>
+    <bpmn:startEvent id="start_eingang" name="pain.001 eingegangen">
+      <bpmn:outgoing>flow_start</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="task_validieren" name="Nachricht validieren und aufteilen">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="zv.nachricht-validieren" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>flow_start</bpmn:incoming>
+      <bpmn:outgoing>flow_zu_gw_schema</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="gw_schema" name="Nachricht gültig?" default="flow_schema_nein">
+      <bpmn:incoming>flow_zu_gw_schema</bpmn:incoming>
+      <bpmn:outgoing>flow_schema_ja</bpmn:outgoing>
+      <bpmn:outgoing>flow_schema_nein</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="task_zurueckweisen" name="Zurückweisung melden">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="zv.statusreport" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>flow_schema_nein</bpmn:incoming>
+      <bpmn:outgoing>flow_zurueckgewiesen</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end_zurueckgewiesen" name="Nachricht zurückgewiesen">
+      <bpmn:incoming>flow_zurueckgewiesen</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:callActivity id="call_zahlung" name="Zahlung prüfen und disponieren (je Transaktion)">
+      <bpmn:extensionElements>
+        <zeebe:calledElement processId="zv-zahlung-pruefen" propagateAllChildVariables="false" propagateAllParentVariables="false" />
+        <zeebe:ioMapping>
+          <zeebe:input source="=zahlung" target="zahlung" />
+          <zeebe:input source="=nachricht" target="nachricht" />
+          <zeebe:output source="=ergebnis" target="ergebnis" />
+        </zeebe:ioMapping>
+      </bpmn:extensionElements>
+      <bpmn:incoming>flow_schema_ja</bpmn:incoming>
+      <bpmn:outgoing>flow_zu_statusreport</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics>
+        <bpmn:extensionElements>
+          <zeebe:loopCharacteristics inputCollection="=zahlungen" inputElement="zahlung" outputCollection="ergebnisse" outputElement="=ergebnis" />
+        </bpmn:extensionElements>
+      </bpmn:multiInstanceLoopCharacteristics>
+    </bpmn:callActivity>
+    <bpmn:serviceTask id="task_statusreport" name="Statusreport pain.002 erstellen">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="zv.statusreport" retries="3" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>flow_zu_statusreport</bpmn:incoming>
+      <bpmn:outgoing>flow_ende</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end_verarbeitet" name="Nachricht verarbeitet">
+      <bpmn:incoming>flow_ende</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="flow_start" sourceRef="start_eingang" targetRef="task_validieren" />
+    <bpmn:sequenceFlow id="flow_zu_gw_schema" sourceRef="task_validieren" targetRef="gw_schema" />
+    <bpmn:sequenceFlow id="flow_schema_ja" name="ja" sourceRef="gw_schema" targetRef="call_zahlung">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=nachrichtGueltig = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="flow_schema_nein" name="nein" sourceRef="gw_schema" targetRef="task_zurueckweisen" />
+    <bpmn:sequenceFlow id="flow_zurueckgewiesen" sourceRef="task_zurueckweisen" targetRef="end_zurueckgewiesen" />
+    <bpmn:sequenceFlow id="flow_zu_statusreport" sourceRef="call_zahlung" targetRef="task_statusreport" />
+    <bpmn:sequenceFlow id="flow_ende" sourceRef="task_statusreport" targetRef="end_verarbeitet" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_zv-nachricht-verarbeiten">
+    <bpmndi:BPMNPlane id="BPMNPlane_zv-nachricht-verarbeiten" bpmnElement="zv-nachricht-verarbeiten">
+      <bpmndi:BPMNShape id="start_eingang_di" bpmnElement="start_eingang">
+        <dc:Bounds x="152" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="110" y="224" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_validieren_di" bpmnElement="task_validieren">
+        <dc:Bounds x="240" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_schema_di" bpmnElement="gw_schema" isMarkerVisible="true">
+        <dc:Bounds x="395" y="175" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="361" y="143" width="119" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_zurueckweisen_di" bpmnElement="task_zurueckweisen">
+        <dc:Bounds x="370" y="300" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_zurueckgewiesen_di" bpmnElement="end_zurueckgewiesen">
+        <dc:Bounds x="522" y="322" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="480" y="364" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="call_zahlung_di" bpmnElement="call_zahlung">
+        <dc:Bounds x="500" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_statusreport_di" bpmnElement="task_statusreport">
+        <dc:Bounds x="660" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_verarbeitet_di" bpmnElement="end_verarbeitet">
+        <dc:Bounds x="822" y="182" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="780" y="224" width="120" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_start_di" bpmnElement="flow_start">
+        <di:waypoint x="188" y="200" />
+        <di:waypoint x="240" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_zu_gw_schema_di" bpmnElement="flow_zu_gw_schema">
+        <di:waypoint x="340" y="200" />
+        <di:waypoint x="395" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_schema_ja_di" bpmnElement="flow_schema_ja">
+        <di:waypoint x="445" y="200" />
+        <di:waypoint x="500" y="200" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="464" y="182" width="14" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_schema_nein_di" bpmnElement="flow_schema_nein">
+        <di:waypoint x="420" y="225" />
+        <di:waypoint x="420" y="300" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="426" y="258" width="24" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_zurueckgewiesen_di" bpmnElement="flow_zurueckgewiesen">
+        <di:waypoint x="470" y="340" />
+        <di:waypoint x="522" y="340" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_zu_statusreport_di" bpmnElement="flow_zu_statusreport">
+        <di:waypoint x="600" y="200" />
+        <di:waypoint x="660" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_ende_di" bpmnElement="flow_ende">
+        <di:waypoint x="760" y="200" />
+        <di:waypoint x="822" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

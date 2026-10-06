@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20191111/MODEL/" xmlns:dmndi="https://www.omg.org/spec/DMN/20191111/DMNDI/" xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/" xmlns:modeler="http://camunda.org/schema/modeler/1.0" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="zv-klaerfall-entscheidungen" name="Klärfall-Entscheidungen Zahlungsverkehr" namespace="http://camunda.org/schema/1.0/dmn" exporter="zv-klaerfall/tools/generate_models.py" exporterVersion="0.1.0" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="8.9.0">
+  <decision id="klaerfall-klassifikation" name="Klärfall klassifizieren">
+    <extensionElements>
+      <zeebe:versionTag value="1.0" />
+    </extensionElements>
+    <decisionTable id="dt_klaerfall" hitPolicy="FIRST">
+      <input id="in_1" label="Führender Befund">
+        <inputExpression id="inexpr_1" typeRef="string">
+          <text>befundCode</text>
+        </inputExpression>
+        <inputValues id="iv_1">
+          <text>"SANKTION","BETRAG_LIMIT","DUBLETTE","IBAN_PRUEFZIFFER","BIC_UNGUELTIG","BIC_IBAN_MISMATCH","WAEHRUNG","BETRAG_NULL","GEBUEHRENREGELUNG","AUSFUEHRUNGSDATUM","VERWENDUNGSZWECK_FEHLT"</text>
+        </inputValues>
+      </input>
+      <input id="in_2" label="Betrag (EUR)">
+        <inputExpression id="inexpr_2" typeRef="number">
+          <text>betrag</text>
+        </inputExpression>
+      </input>
+      <input id="in_3" label="Sanktionstreffer?">
+        <inputExpression id="inexpr_3" typeRef="boolean">
+          <text>sanktionstreffer</text>
+        </inputExpression>
+      </input>
+      <input id="in_4" label="Nur automatisch korrigierbare Befunde?">
+        <inputExpression id="inexpr_4" typeRef="boolean">
+          <text>nurAutoKorrigierbar</text>
+        </inputExpression>
+      </input>
+      <output id="out_1" label="Kategorie" name="kategorie" typeRef="string">
+        <outputValues id="ov_1">
+          <text>"Compliance","Freigabe","Dublette","Formatkorrektur","Kontodaten","Auftragsdaten","Sonstige"</text>
+        </outputValues>
+      </output>
+      <output id="out_2" label="Priorität" name="prioritaet" typeRef="string">
+        <outputValues id="ov_2">
+          <text>"KRITISCH","HOCH","MITTEL","NIEDRIG"</text>
+        </outputValues>
+      </output>
+      <output id="out_3" label="Zielteam (Kandidatengruppe)" name="zielTeam" typeRef="string">
+        <outputValues id="ov_3">
+          <text>"team-compliance","team-disposition-leitung","team-disposition","team-zahlungsverkehr"</text>
+        </outputValues>
+      </output>
+      <output id="out_4" label="Automatisch korrigieren?" name="autoKorrektur" typeRef="boolean" />
+      <output id="out_5" label="Bearbeitungsfrist (ISO 8601)" name="sla" typeRef="string">
+        <outputValues id="ov_5">
+          <text>"PT2H","PT4H","PT8H","PT24H"</text>
+        </outputValues>
+      </output>
+      <rule id="rule_1">
+        <description>Sanktionstreffer: regulatorisch zwingend manuelle Prüfung durch Compliance, nie automatisch.</description>
+        <inputEntry id="ie_1_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_1_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_1_3">
+          <text>true</text>
+        </inputEntry>
+        <inputEntry id="ie_1_4">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="oe_1_1">
+          <text>"Compliance"</text>
+        </outputEntry>
+        <outputEntry id="oe_1_2">
+          <text>"KRITISCH"</text>
+        </outputEntry>
+        <outputEntry id="oe_1_3">
+          <text>"team-compliance"</text>
+        </outputEntry>
+        <outputEntry id="oe_1_4">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="oe_1_5">
+          <text>"PT2H"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule_2">
+        <description>Doppelte Einreichung: Zahlungsverkehr prüft gegen das Original, bevor Geld doppelt fließt.</description>
+        <inputEntry id="ie_2_1">
+          <text>"DUBLETTE"</text>
+        </inputEntry>
+        <inputEntry id="ie_2_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_2_3">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_2_4">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="oe_2_1">
+          <text>"Dublette"</text>
+        </outputEntry>
+        <outputEntry id="oe_2_2">
+          <text>"HOCH"</text>
+        </outputEntry>
+        <outputEntry id="oe_2_3">
+          <text>"team-zahlungsverkehr"</text>
+        </outputEntry>
+        <outputEntry id="oe_2_4">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="oe_2_5">
+          <text>"PT4H"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule_3">
+        <description>Großbetrag ab 500.000 EUR: Freigabe durch Leitung Disposition (erweitertes Vier-Augen-Prinzip).</description>
+        <inputEntry id="ie_3_1">
+          <text>"BETRAG_LIMIT"</text>
+        </inputEntry>
+        <inputEntry id="ie_3_2">
+          <text>&gt;= 500000</text>
+        </inputEntry>
+        <inputEntry id="ie_3_3">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_3_4">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="oe_3_1">
+          <text>"Freigabe"</text>
+        </outputEntry>
+        <outputEntry id="oe_3_2">
+          <text>"HOCH"</text>
+        </outputEntry>
+        <outputEntry id="oe_3_3">
+          <text>"team-disposition-leitung"</text>
+        </outputEntry>
+        <outputEntry id="oe_3_4">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="oe_3_5">
+          <text>"PT4H"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule_4">
+        <description>Betrag ab Limit: Vier-Augen-Freigabe durch die Disposition.</description>
+        <inputEntry id="ie_4_1">
+          <text>"BETRAG_LIMIT"</text>
+        </inputEntry>
+        <inputEntry id="ie_4_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_4_3">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_4_4">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="oe_4_1">
+          <text>"Freigabe"</text>
+        </outputEntry>
+        <outputEntry id="oe_4_2">
+          <text>"MITTEL"</text>
+        </outputEntry>
+        <outputEntry id="oe_4_3">
+          <text>"team-disposition"</text>
+        </outputEntry>
+        <outputEntry id="oe_4_4">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="oe_4_5">
+          <text>"PT8H"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule_5">
+        <description>Ausschließlich formale Befunde (Gebührenregelung, Ausführungsdatum): automatische Korrektur erlaubt.</description>
+        <inputEntry id="ie_5_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_5_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_5_3">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_5_4">
+          <text>true</text>
+        </inputEntry>
+        <outputEntry id="oe_5_1">
+          <text>"Formatkorrektur"</text>
+        </outputEntry>
+        <outputEntry id="oe_5_2">
+          <text>"NIEDRIG"</text>
+        </outputEntry>
+        <outputEntry id="oe_5_3">
+          <text>"team-zahlungsverkehr"</text>
+        </outputEntry>
+        <outputEntry id="oe_5_4">
+          <text>true</text>
+        </outputEntry>
+        <outputEntry id="oe_5_5">
+          <text>"PT24H"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule_6">
+        <description>Fehlerhafte Kontodaten: Rückfrage beim Einreicher durch den Zahlungsverkehr.</description>
+        <inputEntry id="ie_6_1">
+          <text>"IBAN_PRUEFZIFFER","BIC_UNGUELTIG","BIC_IBAN_MISMATCH"</text>
+        </inputEntry>
+        <inputEntry id="ie_6_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_6_3">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_6_4">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="oe_6_1">
+          <text>"Kontodaten"</text>
+        </outputEntry>
+        <outputEntry id="oe_6_2">
+          <text>"MITTEL"</text>
+        </outputEntry>
+        <outputEntry id="oe_6_3">
+          <text>"team-zahlungsverkehr"</text>
+        </outputEntry>
+        <outputEntry id="oe_6_4">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="oe_6_5">
+          <text>"PT8H"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule_7">
+        <description>Fehlerhafte Auftragsdaten (Währung, Betrag, Datum außerhalb des Vorlaufs, Gebührenregelung).</description>
+        <inputEntry id="ie_7_1">
+          <text>"WAEHRUNG","BETRAG_NULL","AUSFUEHRUNGSDATUM","GEBUEHRENREGELUNG"</text>
+        </inputEntry>
+        <inputEntry id="ie_7_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_7_3">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_7_4">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="oe_7_1">
+          <text>"Auftragsdaten"</text>
+        </outputEntry>
+        <outputEntry id="oe_7_2">
+          <text>"MITTEL"</text>
+        </outputEntry>
+        <outputEntry id="oe_7_3">
+          <text>"team-zahlungsverkehr"</text>
+        </outputEntry>
+        <outputEntry id="oe_7_4">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="oe_7_5">
+          <text>"PT8H"</text>
+        </outputEntry>
+      </rule>
+      <rule id="rule_8">
+        <description>Auffangregel: alles Übrige landet beim Zahlungsverkehr.</description>
+        <inputEntry id="ie_8_1">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_8_2">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_8_3">
+          <text>-</text>
+        </inputEntry>
+        <inputEntry id="ie_8_4">
+          <text>-</text>
+        </inputEntry>
+        <outputEntry id="oe_8_1">
+          <text>"Sonstige"</text>
+        </outputEntry>
+        <outputEntry id="oe_8_2">
+          <text>"NIEDRIG"</text>
+        </outputEntry>
+        <outputEntry id="oe_8_3">
+          <text>"team-zahlungsverkehr"</text>
+        </outputEntry>
+        <outputEntry id="oe_8_4">
+          <text>false</text>
+        </outputEntry>
+        <outputEntry id="oe_8_5">
+          <text>"PT24H"</text>
+        </outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="DMNDiagram_klaerfall">
+      <dmndi:DMNShape id="DMNShape_klaerfall" dmnElementRef="klaerfall-klassifikation">
+        <dc:Bounds height="80" width="180" x="160" y="100" />
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

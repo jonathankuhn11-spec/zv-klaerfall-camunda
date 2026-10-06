@@ -1,0 +1,81 @@
+# Lokale Camunda-8-Umgebung für dieses Projekt.
+#
+# Abgeleitet aus dem offiziellen "lightweight"-Docker-Compose von Camunda 8.9
+# (https://github.com/camunda/camunda-distributions, Release docker-compose-8.9): ein einziges
+# Image "camunda/camunda" bündelt Zeebe, Operate, Tasklist und Identity; als Sekundärspeicher dient
+# eine dateibasierte H2-Datenbank. Der Connectors-Dienst wurde weggelassen (hier nicht benötigt).
+#
+#   docker compose -f docker/docker-compose.yaml up -d
+#   Operate:  http://localhost:8080/operate    Tasklist: http://localhost:8080/tasklist
+#   REST-API: http://localhost:8080/v2          Login:    demo / demo
+#
+# Optional läuft auch der Worker im Container (Profil "app"):
+#   docker compose -f docker/docker-compose.yaml --profile app up -d
+services:
+  camunda-data-init:
+    image: camunda/camunda:${CAMUNDA_VERSION}
+    user: "0:0"
+    entrypoint: ["/bin/sh", "-c", "chown -R 1001:1001 /usr/local/camunda/camunda-data && chmod 775 /usr/local/camunda/camunda-data"]
+    volumes:
+      - camunda-data:/usr/local/camunda/camunda-data
+    restart: "no"
+
+  orchestration:
+    image: camunda/camunda:${CAMUNDA_VERSION}
+    container_name: zv-camunda
+    ports:
+      - "26500:26500"   # gRPC-Gateway
+      - "9600:9600"     # Actuator (Health, Metrics)
+      - "8080:8080"     # Operate, Tasklist, Identity, REST-API /v2
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx1g
+    mem_limit: 1536m
+    restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/9600 && echo -e \"GET /actuator/health/status HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n\" >&3 && head -n 1 <&3'"]
+      interval: 5s
+      retries: 60
+      start_period: 30s
+    volumes:
+      - camunda:/usr/local/camunda/data
+      - camunda-data:/usr/local/camunda/camunda-data
+    configs:
+      - source: orchestration-config
+        target: /usr/local/camunda/config/application.yaml
+    networks:
+      - camunda
+    depends_on:
+      camunda-data-init:
+        condition: service_completed_successfully
+
+  worker:
+    profiles: ["app"]
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: zv-worker
+    environment:
+      - CAMUNDA_URL=http://orchestration:8080
+      - ZV_DATA_DIR=/data
+    volumes:
+      - worker-data:/data
+    networks:
+      - camunda
+    depends_on:
+      orchestration:
+        condition: service_healthy
+    command: ["sh", "-c", "zv deploy && zv worker"]
+    restart: on-failure
+
+volumes:
+  camunda:
+  camunda-data:
+  worker-data:
+
+networks:
+  camunda:
+    name: zv-camunda
+
+configs:
+  orchestration-config:
+    file: ./configuration/${ORCHESTRATION_CONFIG_FILE:-application-h2.yaml}

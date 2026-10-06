@@ -1,0 +1,72 @@
+{
+  "id": "zv-klaerfall-form",
+  "type": "default",
+  "schemaVersion": 18,
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.9.0",
+  "exporter": {
+    "name": "zv-klaerfall/tools/generate_models.py",
+    "version": "0.1.0"
+  },
+  "components": [
+    {
+      "id": "txt_kopf",
+      "type": "text",
+      "text": "## Klärfall Zahlungsverkehr\n\n**Kategorie:** {{klassifikation.kategorie}} · **Priorität:** {{klassifikation.prioritaet}} · **Frist:** {{klassifikation.sla}} · **Zielteam:** {{klassifikation.zielTeam}}"
+    },
+    {
+      "id": "fld_zahlung",
+      "type": "textarea",
+      "key": "zahlungText",
+      "label": "Zahlung",
+      "readonly": true
+    },
+    {
+      "id": "fld_befunde",
+      "type": "textarea",
+      "key": "befundeText",
+      "label": "Befunde der fachlichen Prüfung",
+      "readonly": true
+    },
+    {
+      "id": "fld_entscheidung",
+      "type": "radio",
+      "key": "entscheidung",
+      "label": "Entscheidung",
+      "validate": {
+        "required": true
+      },
+      "values": [
+        {
+          "label": "Freigeben – Zahlung wird ausgeführt (pain.002: ACCP)",
+          "value": "FREIGEBEN"
+        },
+        {
+          "label": "Ablehnen – Rückmeldung mit ISO-Statusgrund (pain.002: RJCT)",
+          "value": "ABLEHNEN"
+        }
+      ]
+    },
+    {
+      "id": "fld_bearbeiter",
+      "type": "textfield",
+      "key": "bearbeiter",
+      "label": "Bearbeiter (Kürzel)",
+      "validate": {
+        "required": true,
+        "minLength": 2
+      }
+    },
+    {
+      "id": "fld_kommentar",
+      "type": "textarea",
+      "key": "kommentar",
+      "label": "Begründung",
+      "description": "Pflichtfeld (Vier-Augen-Prinzip). Wird im Audit-Trail gespeichert; bei Ablehnung erhält der Einreicher den Text im Statusreport.",
+      "validate": {
+        "required": true,
+        "minLength": 5
+      }
+    }
+  ]
+}
