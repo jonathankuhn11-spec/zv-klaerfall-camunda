@@ -1,19 +1,16 @@
-# Klärfallbearbeitung im Zahlungsverkehr mit Camunda 8
-
-**ISO-20022-Zahlungsaufträge (pain.001) technisch und fachlich prüfen, Klärfälle per DMN klassifizieren
-und an das richtige Team routen, formale Mängel automatisch korrigieren, jede Entscheidung revisionssicher
-protokollieren und dem Einreicher einen standardkonformen pain.002-Statusreport zurückgeben.**
+# zv-klaerfall-camunda
 
 [![CI](https://github.com/jonathankuhn11-spec/zv-klaerfall-camunda/actions/workflows/ci.yml/badge.svg)](https://github.com/jonathankuhn11-spec/zv-klaerfall-camunda/actions/workflows/ci.yml)
-![Camunda 8.9](https://img.shields.io/badge/Camunda-8.9-FC5D0D?logo=camunda&logoColor=white)
-![Python 3.11+](https://img.shields.io/badge/Python-3.11%20%7C%203.12%20%7C%203.13-3776AB?logo=python&logoColor=white)
-![Tests](https://img.shields.io/badge/Tests-77%20passed-brightgreen)
-![mypy strict](https://img.shields.io/badge/mypy-strict-blue)
-[![Lizenz MIT](https://img.shields.io/badge/Lizenz-MIT-lightgrey)](LICENSE)
+
+*Exception handling for ISO 20022 payment files (pain.001 in, pain.002 out) on Camunda 8: validation,
+DMN-based routing to the right team, SLA escalation and a hash-chained audit trail. Written in German
+because the domain and its users are German banks.*
+
+Klärfallbearbeitung im Zahlungsverkehr: Zahlungsaufträge im Format pain.001 technisch und fachlich prüfen,
+Klärfälle per DMN klassifizieren und an das zuständige Team routen, formale Mängel automatisch korrigieren,
+jede Entscheidung nachvollziehbar protokollieren und dem Einreicher einen pain.002-Statusreport zurückgeben.
 
 ![Prozess: Zahlung prüfen und disponieren](docs/img/zv-zahlung-pruefen.png)
-
----
 
 ## Worum es geht
 
@@ -22,8 +19,8 @@ Zahlung **disponieren**: Ist die Datei technisch in Ordnung? Stimmen IBAN und BI
 dem Freigabelimit? Ist ein Empfänger sanktioniert? Wurde die Zahlung schon einmal eingereicht? Und wer
 entscheidet in welcher Frist, wenn etwas nicht passt?
 
-Dieses Projekt setzt diesen Prozess durchgängig um – vom XSD bis zum Audit-Trail – und zeigt dabei die
-Arbeitsweise an der Schnittstelle zwischen Fachbereich und IT:
+Dieses Projekt setzt den Prozess vom XSD bis zum Audit-Trail um. Zu jedem technischen Baustein gibt es das
+fachliche Gegenstück, so wie es in einem Projekt zwischen Fachbereich und IT entstehen würde:
 
 | Fachliche Seite | Technische Seite |
 |---|---|
@@ -34,7 +31,7 @@ Arbeitsweise an der Schnittstelle zwischen Fachbereich und IT:
 | Revisionssichere Nachweisführung | Append-only Audit-Trail mit SHA-256-Hashkette, Manipulation und Lücken werden erkannt |
 | [Architekturentscheidungen (ADRs)](docs/adr/) | Validierte ISO-20022-Nachrichten (pain.001.001.09 / pain.002.001.12, offizielle XSDs) |
 
-## Schnellstart ohne Camunda (10 Sekunden)
+## Ausprobieren ohne Camunda
 
 ```bash
 git clone https://github.com/jonathankuhn11-spec/zv-klaerfall-camunda.git && cd zv-klaerfall-camunda
@@ -56,7 +53,7 @@ zv validate samples/pain.001/13_gemischt.xml   # nur prüfen, alle Befunde anzei
 zv audit show --referenz E2E-1013-4     # Entscheidungsspur einer einzelnen Zahlung
 ```
 
-## Schnellstart mit Camunda 8
+## Mit Camunda 8
 
 Voraussetzung: Docker. Startet den Orchestration Cluster (Zeebe, Operate, Tasklist, Identity in einem
 Container, ca. 1,5 GB RAM):
@@ -68,7 +65,7 @@ zv ingest                                             # je Beispieldatei eine Pr
 zv worker                                             # Job-Worker für alle zv.*-Service-Tasks
 ```
 
-Jetzt die Klärfälle in **Tasklist** (`http://localhost:8080/tasklist`) bearbeiten – oder per CLI:
+Die Klärfälle lassen sich in **Tasklist** (`http://localhost:8080/tasklist`) bearbeiten oder per CLI:
 
 ```bash
 zv tasks list --gruppe team-disposition
@@ -80,16 +77,16 @@ zv status                                             # Topologie, aktive und ab
 In **Operate** sind die Instanzen, die ausgewertete DMN-Tabelle und alle Variablen sichtbar. Der Worker
 kann alternativ im Container laufen: `docker compose -f docker/docker-compose.yaml --profile app up -d`.
 
-## Der Prozess in 60 Sekunden
+## Der Prozess
 
-**1. Datei verarbeiten** – XSD-Prüfung und Kopfdaten-Plausibilität (`NbOfTxs`, `CtrlSum`). Ungültige
+**1. Datei verarbeiten.** XSD-Prüfung und Kopfdaten-Plausibilität (`NbOfTxs`, `CtrlSum`). Ungültige
 Dateien werden als Ganzes mit `pain.002` `RJCT` + Statusgrund (`FF01`, `AM10`) zurückgewiesen. Gültige
 Dateien werden je Transaktion parallel disponiert (Call Activity, Multi-Instance) und am Ende zu einem
 Statusreport aggregiert (`ACCP` / `PART` / `RJCT`).
 
 ![Prozess: Datei verarbeiten](docs/img/zv-nachricht-verarbeiten.png)
 
-**2. Zahlung prüfen** – der Befundkatalog liefert Befunde mit Schweregrad, Rang und ISO-Statusgrund:
+**2. Zahlung prüfen.** Der Befundkatalog liefert Befunde mit Schweregrad, Rang und ISO-Statusgrund:
 
 | Befund | Prüfung | Auto-Korrektur | pain.002 |
 |---|---|---|---|
@@ -101,19 +98,19 @@ Statusreport aggregiert (`ACCP` / `PART` / `RJCT`).
 | `GEBUEHRENREGELUNG` | `ChrgBr` muss bei SEPA `SLEV` sein (EPC-Rulebook) | **ja** | `CH16` |
 | `AUSFUEHRUNGSDATUM` | TARGET2-Bankarbeitstag, nicht in der Vergangenheit, max. 90 Tage Vorlauf | **ja** (Verschiebung) | `DT01` |
 
-**3. Klärfall klassifizieren** – die DMN-Tabelle entscheidet über Kategorie, Priorität, Zielteam, Frist und
+**3. Klärfall klassifizieren.** Die DMN-Tabelle entscheidet über Kategorie, Priorität, Zielteam, Frist und
 ob automatisch korrigiert werden darf. Sie ist das Instrument des Fachbereichs; jede Regel trägt ihre
 Begründung:
 
 ![DMN-Tabelle](docs/img/klaerfall-klassifikation.png)
 
-**4. Klärfall bearbeiten** – User Task mit Kandidatengruppe aus der Klassifikation, Fälligkeit `jetzt + SLA`,
+**4. Klärfall bearbeiten.** User Task mit Kandidatengruppe aus der Klassifikation, Fälligkeit `jetzt + SLA`,
 Priorität 90/70/50/30. Freigabe oder Ablehnung mit Pflicht-Begründung. Ein nicht unterbrechender Timer
 eskaliert bei Fristüberschreitung, ohne den Klärfall abzubrechen.
 
 <p align="center"><img src="docs/img/zv-klaerfall-form.png" width="640" alt="Formular Klärfall bearbeiten"></p>
 
-**5. Nachweis** – jeder Schritt landet im Audit-Trail, abgelegt mit Zeitstempel, Akteur und Hash des Vorgängers:
+**5. Nachweis.** Jeder Schritt landet im Audit-Trail, abgelegt mit Zeitstempel, Akteur und Hash des Vorgängers:
 
 ```
 $ zv audit show --referenz E2E-1013-2
@@ -130,8 +127,8 @@ Alle 13 Beispieldateien wurden gegen einen lokalen Camunda-8.9.22-Cluster verarb
 `zv ingest`, `zv worker`, Klärfälle in Tasklist): 47 Jobs ohne Fehler, Ergebnisse identisch mit dem
 Offline-Durchlauf, pain.002-Reports XSD-gültig, nicht unterbrechender SLA-Timer mit Eskalation bestätigt.
 
-Operate zeigt den gelaufenen Pfad einer Zahlung über DMN, Klärfall, Entscheidung und Freigabe – inklusive
-aller Variablen:
+Operate zeigt den gelaufenen Pfad einer Zahlung über DMN, Klärfall, Entscheidung und Freigabe,
+inklusive aller Variablen:
 
 ![Operate: Prozessinstanz mit gelaufenem Pfad](docs/img/operate-instanz.png)
 
@@ -143,7 +140,7 @@ aus der DMN-Klassifikation:
 ## Projektstruktur
 
 ```
-bpmn/                      Prozessmodelle (BPMN 2.0), Entscheidungstabelle (DMN 1.3) – generiert, gelintet
+bpmn/                      Prozessmodelle (BPMN 2.0), Entscheidungstabelle (DMN 1.3), generiert und gelintet
 forms/                     Camunda-Formular für den Klärfall-User-Task
 samples/pain.001/          13 Beispielszenarien mit Erwartungswerten (README dort)
 src/zv_klaerfall/
@@ -197,8 +194,8 @@ Stellvertreter, Deckungsprüfung und Berechtigungskonzept fehlen, der Audit-Trai
 ## Autor
 
 Jonathan Kuhn · [LinkedIn](https://linkedin.com/in/jk-kuhn) · [GitHub](https://github.com/jonathankuhn11-spec)
-Hintergrund: Analyse und Automatisierung energiewirtschaftlicher Marktkommunikation (EDIFACT, GPKE) –
-dieses Projekt überträgt dieselbe Arbeitsweise (Nachrichtenstandard verstehen, Prozess modellieren,
+Hintergrund: Analyse und Automatisierung energiewirtschaftlicher Marktkommunikation (EDIFACT, GPKE).
+Dieses Projekt überträgt dieselbe Arbeitsweise (Nachrichtenstandard verstehen, Prozess modellieren,
 Regeln explizit machen, Klärfälle sauber routen) auf den Zahlungsverkehr.
 
 Lizenz: [MIT](LICENSE)
